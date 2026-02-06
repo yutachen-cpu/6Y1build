@@ -28,13 +28,25 @@ app = FastAPI()
 
 # --- CORS ---
 # Allow requests from the frontend
-origins = [
-    "http://localhost:5173",  # Vite default
-    "http://localhost:3000",
-    "https://*.onrender.com",  # Render deployments
-    "*" # Relaxed for dev - remove in 
-    "https://sixy1build.onrender.com"
-]
+# You can set CORS_ORIGINS environment variable with comma-separated values
+# Example: CORS_ORIGINS="https://frontend1.com,https://frontend2.com"
+cors_origins_env = os.environ.get("CORS_ORIGINS", "")
+if cors_origins_env:
+    origins = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    # Default origins for development and known deployments
+    origins = [
+        "http://localhost:5173",      # Vite default (local dev)
+        "http://localhost:8888",      # Your custom Vite port
+        "http://localhost:3000",      # Alternative local port
+        "https://sixy1build.onrender.com",      # Backend domain
+        "https://sixy1build-1.onrender.com",    # Frontend domain
+    ]
+
+# For development, you can use "*" to allow all origins
+# But for production, it's better to explicitly list allowed origins
+# Uncomment the line below for local development testing
+# origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,6 +55,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+print(f"✅ CORS enabled for origins: {origins}")
+
 
 # --- Supabase Client ---
 supabase: Client = None
