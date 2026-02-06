@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ToastProvider } from './components/Toast';
 import { ImagePreviewProvider } from './components/ImagePreview';
@@ -12,10 +13,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ToastProvider>
-      <ImagePreviewProvider>
-        <App />
-      </ImagePreviewProvider>
-    </ToastProvider>
+    <BrowserRouter>
+      <ToastProvider>
+        <ImagePreviewProvider>
+          <App />
+        </ImagePreviewProvider>
+      </ToastProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

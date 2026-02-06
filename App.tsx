@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -23,11 +24,11 @@ import {
 import { api } from './api';
 import { Event, Equipment } from './types';
 
-type View = 'dashboard' | 'events' | 'inventory' | 'checklist';
-
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // Global State
-  const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile toggle
   const [selectedEventForChecklist, setSelectedEventForChecklist] = useState<Event | null>(null);
 
@@ -35,7 +36,12 @@ function App() {
   const [events, setEvents] = useState<Event[]>([]);
   const [inventory, setInventory] = useState<Equipment[]>([]);
 
-  // Init Data
+  // Derive active view from current route
+  const activeView = location.pathname === '/events' ? 'events'
+    : location.pathname === '/inventory' ? 'inventory'
+      : location.pathname.startsWith('/checklist') ? 'checklist'
+        : 'dashboard';
+
   // Init Data (Async with API)
   useEffect(() => {
     const initData = async () => {
@@ -90,8 +96,6 @@ function App() {
   }, []);
 
   // Persistence Effects (Debounced or Direct Sync)
-  // Note: Syncing entire list on every edit is not efficient for large data, 
-  // but acceptable for this MVP scale.
   useEffect(() => {
     if (inventory.length > 0) {
       api.syncInventory(inventory).catch(e => console.error("Sync Inv Failed", e));
@@ -143,25 +147,10 @@ function App() {
 
   const handleNavigateChecklist = (evt: Event) => {
     setSelectedEventForChecklist(evt);
-    setActiveView('checklist');
+    navigate(`/checklist/${evt.id}`);
   };
 
   // --- Render ---
-
-  // Special full-screen view for Checklist
-  if (activeView === 'checklist' && selectedEventForChecklist) {
-    return (
-      <ChecklistAssistant
-        event={selectedEventForChecklist}
-        inventory={inventory}
-        onBack={() => setActiveView('events')}
-        onUpdateEvent={(updatedEvt) => {
-          setEvents(events.map(e => e.id === updatedEvt.id ? updatedEvt : e));
-          setSelectedEventForChecklist(updatedEvt);
-        }}
-      />
-    );
-  }
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
@@ -177,19 +166,19 @@ function App() {
 
         <nav className="flex-1 p-4 space-y-2">
           <button
-            onClick={() => setActiveView('dashboard')}
+            onClick={() => navigate('/')}
             className={`w-full flex items-center p-3 rounded-lg transition-colors font-medium ${activeView === 'dashboard' ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 hover:text-slate-900'}`}
           >
             <LayoutDashboard className="w-5 h-5 mr-3" /> 數據看板
           </button>
           <button
-            onClick={() => setActiveView('events')}
+            onClick={() => navigate('/events')}
             className={`w-full flex items-center p-3 rounded-lg transition-colors font-medium ${activeView === 'events' ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 hover:text-slate-900'}`}
           >
             <CalendarDays className="w-5 h-5 mr-3" /> 活動排程
           </button>
           <button
-            onClick={() => setActiveView('inventory')}
+            onClick={() => navigate('/inventory')}
             className={`w-full flex items-center p-3 rounded-lg transition-colors font-medium ${activeView === 'inventory' ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-100 hover:text-slate-900'}`}
           >
             <PackageSearch className="w-5 h-5 mr-3" /> 資產管理
@@ -221,9 +210,9 @@ function App() {
               <button onClick={() => setIsSidebarOpen(false)}><X className="text-slate-500 hover:text-slate-900" /></button>
             </div>
             <nav className="space-y-2">
-              <button onClick={() => { setActiveView('dashboard'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-blue-600 bg-blue-50 font-medium rounded-lg">數據看板</button>
-              <button onClick={() => { setActiveView('events'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg">活動排程</button>
-              <button onClick={() => { setActiveView('inventory'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg">資產管理</button>
+              <button onClick={() => { navigate('/'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-blue-600 bg-blue-50 font-medium rounded-lg">數據看板</button>
+              <button onClick={() => { navigate('/events'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg">活動排程</button>
+              <button onClick={() => { navigate('/inventory'); setIsSidebarOpen(false) }} className="block w-full text-left p-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg">資產管理</button>
             </nav>
           </div>
         </div>
@@ -243,30 +232,67 @@ function App() {
 
         <div className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
-                {activeView === 'dashboard' && '數據總覽'}
-                {activeView === 'events' && '活動排程管理'}
-                {activeView === 'inventory' && '設備資產清單'}
-              </h2>
-              <p className="text-slate-500 mt-1">
-                {activeView === 'dashboard' && '即時監控庫存狀態與專案進度'}
-                {activeView === 'events' && '規劃展會檔期與分配資源'}
-                {activeView === 'inventory' && '維護設備規格與狀態'}
-              </p>
-            </div>
+            <Routes>
+              <Route path="/" element={
+                <>
+                  <div className="mb-6">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900">數據總覽</h2>
+                    <p className="text-slate-500 mt-1">即時監控庫存狀態與專案進度</p>
+                  </div>
+                  <Dashboard events={events} inventory={inventory} conflicts={conflicts} />
+                </>
+              } />
 
-            {activeView === 'dashboard' && <Dashboard events={events} inventory={inventory} conflicts={conflicts} />}
-            {activeView === 'inventory' && <InventoryManager inventory={inventory} onUpdate={setInventory} />}
-            {activeView === 'events' && (
-              <EventManager
-                events={events}
-                inventory={inventory}
-                onUpdate={setEvents}
-                onNavigateToChecklist={handleNavigateChecklist}
-                conflicts={conflicts}
-              />
-            )}
+              <Route path="/events" element={
+                <>
+                  <div className="mb-6">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900">活動排程管理</h2>
+                    <p className="text-slate-500 mt-1">規劃展會檔期與分配資源</p>
+                  </div>
+                  <EventManager
+                    events={events}
+                    inventory={inventory}
+                    onUpdate={setEvents}
+                    onNavigateToChecklist={handleNavigateChecklist}
+                    conflicts={conflicts}
+                  />
+                </>
+              } />
+
+              <Route path="/inventory" element={
+                <>
+                  <div className="mb-6">
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900">設備資產清單</h2>
+                    <p className="text-slate-500 mt-1">維護設備規格與狀態</p>
+                  </div>
+                  <InventoryManager inventory={inventory} onUpdate={setInventory} />
+                </>
+              } />
+
+              <Route path="/checklist/:eventId" element={
+                selectedEventForChecklist ? (
+                  <ChecklistAssistant
+                    event={selectedEventForChecklist}
+                    inventory={inventory}
+                    onBack={() => navigate('/events')}
+                    onUpdateEvent={(updatedEvt) => {
+                      setEvents(events.map(e => e.id === updatedEvt.id ? updatedEvt : e));
+                      setSelectedEventForChecklist(updatedEvt);
+                    }}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-slate-500">找不到活動資料</p>
+                    <button
+                      onClick={() => navigate('/events')}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      返回活動列表
+                    </button>
+                  </div>
+                )
+              } />
+            </Routes>
           </div>
         </div>
       </main>
