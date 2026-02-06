@@ -32,7 +32,8 @@ origins = [
     "http://localhost:5173",  # Vite default
     "http://localhost:3000",
     "https://*.onrender.com",  # Render deployments
-    "*" # Relaxed for dev - remove in production
+    "*" # Relaxed for dev - remove in 
+    "https://sixy1build.onrender.com"
 ]
 
 app.add_middleware(
