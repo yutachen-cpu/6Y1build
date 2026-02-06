@@ -1,0 +1,5 @@
+{
+  "name": "6Y1設備管理",
+  "description": "展會活動與設備管理系統，可建立活動、管理設備，系統依檔期自動檢查設備餘量是否衝突。",
+  "requestFramePermissions": []
+}
